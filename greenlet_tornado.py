@@ -34,6 +34,7 @@ import tornado.httpclient
 import tornado.ioloop
 import tornado.web
 from functools import wraps, partial
+import time
 
 def greenlet_fetch(request, **kwargs):
     """
@@ -68,6 +69,20 @@ def greenlet_fetch(request, **kwargs):
     response.rethrow()
     return response
 
+def greenlet_sleep(countdown):
+    """
+    Non-blocking sleep for Tornado server used
+    """
+    gr = greenlet.getcurrent()
+    assert gr.parent is not None, "greenlet_sleep() can only be called (possibly indirectly) from a RequestHandler method wrapped by the greenlet_asynchronous decorator."
+
+    def callback():
+        gr.switch()
+
+
+    ioloop = tornado.ioloop.IOLoop.instance()
+    ioloop.add_callback(ioloop.add_timeout, time.time() + countdown, callback)
+    gr.parent.switch()
 
 def greenlet_asynchronous(wrapped_method):
     """
@@ -91,4 +106,5 @@ def greenlet_asynchronous(wrapped_method):
         gr.switch()
 
     return wrapper
+
 
